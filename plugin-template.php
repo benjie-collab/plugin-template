@@ -7,7 +7,8 @@ Author: <a href="http://www.benznext.com" target="_blank">Benjie Bantecil</a>
 Version: 0.1
 */
 define('PLGIN_URL', WP_PLUGIN_URL."/".dirname( plugin_basename( __FILE__ ) ) );
-define('PLGIN_PATH', plugin_dir_path(__FILE__));  
+define('PLGIN_PATH', plugin_dir_path(__FILE__));
+define('PLGIN_DB_NAME', 'plugin_template' );
 
 register_activation_hook( __FILE__, array( 'WPPluginTemplate_Inc', 'on_activation' ) );
 register_deactivation_hook( __FILE__, array( 'WPPluginTemplate_Inc', 'on_deactivation' ) );
@@ -16,16 +17,17 @@ register_uninstall_hook( __FILE__, array( 'WPPluginTemplate_Inc', 'on_uninstall'
 
 register_activation_hook(__FILE__, array( 'WPPluginTemplate', 'create_plugin_table' ));
 //register_activation_hook( __FILE__, array( 'WPPluginTemplate', 'insert_plugin_table')); //Dont add initial Data
-
 register_deactivation_hook( __FILE__, array( 'WPPluginTemplate', 'restore_op' ) );
 
-add_action( 'plugins_loaded', array( 'WPPluginTemplate', 'init' ) );
+
+
+
 
 
 class WPPluginTemplate {
  	protected static $instance;
 	static $wppt_db_version = '1.0.0';
-	static $wppt_db_name = 'plugin_template';
+	static $wppt_db_name = PLGIN_DB_NAME;
 	
     public static function init(){		
         is_null( self::$instance ) AND self::$instance = new self;
@@ -34,13 +36,9 @@ class WPPluginTemplate {
     public function __construct() {
 		self::checkop();
 		
- 		add_action( current_filter(), array( $this, 'load_files' ), 30 );
+		load_plugin_textdomain( 'wp-plugin-template', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
 		
-        load_plugin_textdomain( 'wp-plugin-template', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
-        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_styles' ) );
-        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
-		
-		
+ 		add_action( current_filter(), array( $this, 'load_files' ), 30 );		
 		add_action('admin_init', array( $this, 'admininit_callback' ), 20 );
 		add_action('admin_menu', array( $this, 'adminmenu_callback' ), 20);
 		
@@ -55,11 +53,20 @@ class WPPluginTemplate {
 		add_action('wp_ajax_viz_remotedata', array( $this, 'viz_remote_data' ), 20);
 
 		
-
-        add_filter( 'the_content', array( $this, 'append_post_notification' ) );
+		
+		
+		
+		//add_shortcode( 'bxtviz', array( 'wppt_plugin', 'wppt_plugin_sc' ) );
+		
+		
+		/** Front-end **/
+		//add_filter( 'the_content', array( $this, 'append_post_notification' ) );
+        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_styles' ) );
+        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
+        
     }
-	
-	
+
+
 	
 	
 	
@@ -147,8 +154,17 @@ class WPPluginTemplate {
 	}
 	 
 	public function register_plugin_scripts() {
-		//wp_register_script( 'demo-plugin', plugins_url( 'demo-plugin/js/display.js' ) );
-		//wp_enqueue_script( 'demo-plugin' );
+		/** Options Page Library **/
+		wp_enqueue_script('knockout', PLGIN_URL.'/lib/knockout-3.2.0.js', array(), '', true );
+		wp_enqueue_script('globalize', PLGIN_URL.'/lib/globalize.js', array(), '', true );
+		wp_enqueue_script('dxchart', PLGIN_URL.'/lib/dx.all.js', array(), '', true );
+		wp_enqueue_script('dxchart-map-world', PLGIN_URL.'/data/world.js', array(), '', true );	
+		
+		wp_enqueue_script('ko-buildviz', PLGIN_URL.'/models/buildviz.js', array('jquery'), '', true  );
+		
+		/** KO Registers **/
+		//wp_register_script('viz', PLGIN_URL.'/models/viz.js' );	
+		wp_enqueue_script('viz', PLGIN_URL.'/models/viz.js', array(), '', true );	
 	}
 	
 	
@@ -170,13 +186,15 @@ class WPPluginTemplate {
 	private function checkop() {
 		//the default options
 		require_once (PLGIN_PATH.'admin/inc/checkop.php');
-	}
-	
+	}	
 	public function getop(){
 		return get_option('wp_plugin_op');
-		}
+	}
 		
-		
+	
+	/**
+     * Creates the options
+     */
 	public function create_plugin_table() {	
 		require_once (PLGIN_PATH.'admin/inc/create-plugin-table.php');		
     }
@@ -206,7 +224,9 @@ class WPPluginTemplate {
 		require_once (PLGIN_PATH.'admin/inc/remote-data.php');
 		die();
 	}
-		
+	
+	
+	
 		
 		
 		
@@ -219,7 +239,13 @@ class WPPluginTemplate {
 	}
  
 }
-//$wpPluginTemplate = new WPPluginTemplate();
+
+
+require_once (PLGIN_PATH.'widget/widget.php');
+add_action( 'plugins_loaded', array( 'WPPluginTemplate', 'init' ) ); 
+add_action('widgets_init', create_function('','return register_widget("WPPluginWidget");'));
+
+//
 //echo $wpPluginTemplate->append_post_notification();
 //$wpPluginTemplate->install();
 //echo $wpPluginTemplate->getop();
